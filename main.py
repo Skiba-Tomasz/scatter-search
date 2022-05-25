@@ -1,8 +1,11 @@
+import copy
 import csv
+from importlib.resources import path
 from textwrap import indent
-from plot import plotPath
+from plot import plotConnections, comparePlot
 from SPoint import SPoint
 from SConn import SConn
+from SPath import SPath
 import random
 
        
@@ -45,15 +48,38 @@ def pickWeightedRandomMove(possibleMoves: SConn):
 def selectMove(possibleMoves: SConn):
     return pickWeightedRandomMove(possibleMoves)
 
-def improvementFunction(pathConnections: SConn):
-    lastestTopCostConnection = pathConnections[len(pathConnections) - 1]
-    lastestTopCostConnectionIndex = len(pathConnections) - 1
-    for index, connection in reversed(list(enumerate(pathConnections))):
+def resetPositionToLastTopCostMove(path: SPath, connections: SConn):
+    lastestTopCostConnection = path.connections[0]
+    lastestTopCostConnectionIndex = 0
+    for index, connection in list(enumerate(path.connections)):
         if connection.cost > lastestTopCostConnection.cost:
             lastestTopCostConnection = connection
             lastestTopCostConnectionIndex = index
-    return pathConnections[:lastestTopCostConnectionIndex]
-
+    movesToReset = path.connections[lastestTopCostConnectionIndex:]
+    for move in movesToReset:
+        for con in connections:
+            if con.origin == move.origin and con.destination == move.destination:
+                con.used = False
+        move.destination.visited = False
+        move.used = False
+        path.cost -= move.cost
+    path.connections = path.connections[:lastestTopCostConnectionIndex]
+    return path, lastestTopCostConnectionIndex
+    
+def continuePath(path, connections, index):
+    if len(path.connections) == 0:
+        return createSimplePath(connections)
+    currentPosition = path.connections[index - 1].destination
+    currentPosition.visited = True
+    while True:
+        possibleMoves = getPossibleMoves(connections, currentPosition)
+        printMoves(possibleMoves)
+        if len(possibleMoves) == 0:
+            break
+        selectedConnection = selectMove(possibleMoves)
+        currentPosition = makeMove(currentPosition, selectedConnection, path.connections)
+        path.cost += selectedConnection.cost
+    return SPath(path.connections, path.cost)
         
 def makeMove(currentPosition, connection, path):
     path.append(connection)
@@ -63,38 +89,45 @@ def makeMove(currentPosition, connection, path):
 
 def createSimplePath(connections):
     # INITIALIZE
-    path = []
+    pathConnections = []
     totalCost = 0
     currentPosition = connections[0].origin
     currentPosition.visited = True
-    #
-    # possibleMoves = getPossibleMoves(connections, currentPosition)
-    # printMoves(possibleMoves)
-    # selectedConnection = pickWeightedRandomMove(possibleMoves)
-    # currentPosition = makeMove(currentPosition, selectedConnection, path)
-    # totalCost += selectedConnection.cost
+    # STARTING PATH
     while True:
         possibleMoves = getPossibleMoves(connections, currentPosition)
+        printMoves(possibleMoves)
         if len(possibleMoves) == 0:
             break
-        printMoves(possibleMoves)
         selectedConnection = selectMove(possibleMoves)
-        currentPosition = makeMove(currentPosition, selectedConnection, path)
+        currentPosition = makeMove(currentPosition, selectedConnection, pathConnections)
         totalCost += selectedConnection.cost
-    return path, totalCost
+    return SPath(pathConnections, totalCost)
 
 
 if __name__ == '__main__':
     points = loadPointsFromFile(FILE_BASE_PATH  + 'points.csv')
-    points[0].visited = True
     connections = loadConnectionsFromFile(points, FILE_BASE_PATH + 'connections.csv')
+    pathStore = []
 
-    moves, cost = createSimplePath(connections)
-    subsequentOrigins = []
+    basePath = createSimplePath(connections)
+    pathStore.append(copy.deepcopy(basePath))
 
-    print("Selected path with cost " + str(cost) + " steps taken " + str(len(moves)))
-    for m in moves:
-        print(str(m))
-        subsequentOrigins.append(m.origin)
+    print("Selected path with cost " + str(basePath.cost) + " steps taken " + str(len(basePath.connections)))
+    plotConnections(basePath.connections, save = True)
 
-    plotPath(subsequentOrigins)
+    resetedPath, resetIndex = resetPositionToLastTopCostMove(basePath, connections)
+    upgradedPath = continuePath(resetedPath, connections, resetIndex)
+    pathStore.append(copy.deepcopy(upgradedPath))
+
+    print("Selected path with cost " + str(upgradedPath.cost) + " steps taken " + str(len(upgradedPath.connections)))
+    plotConnections(upgradedPath.connections, save = True)
+
+
+    print("Summary:")
+    for p in pathStore:
+        print("Selected path with cost " + str(p.cost) + " steps taken " + str(len(p.connections)))
+        printMoves(p.connections)
+
+    # comparePlot(pathStore[0].connections, pathStore[1].connections)
+    # print("END")
