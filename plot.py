@@ -31,7 +31,9 @@ def plotPath(points: SPoint, show = True, color = "g", stroke = 1, save = False)
     plt.xlim(min(x) - xMargin, max(x) + xMargin)
     plt.ylim(min(y) - yMargin, max(y) + yMargin)
     if save == True:
-        plt.savefig("plots/"+str(int(time.time()*10))+".png")
+        plt.savefig("plots/"+str(int(time.time()*1000))+".png")
+        if show == False:
+            plt.clf()
     if show == True:
         plt.show()
 

@@ -73,7 +73,7 @@ def continuePath(path, connections, index):
     currentPosition.visited = True
     while True:
         possibleMoves = getPossibleMoves(connections, currentPosition)
-        printMoves(possibleMoves)
+        # printMoves(possibleMoves)
         if len(possibleMoves) == 0:
             break
         selectedConnection = selectMove(possibleMoves)
@@ -96,7 +96,7 @@ def createSimplePath(connections):
     # STARTING PATH
     while True:
         possibleMoves = getPossibleMoves(connections, currentPosition)
-        printMoves(possibleMoves)
+        # printMoves(possibleMoves)
         if len(possibleMoves) == 0:
             break
         selectedConnection = selectMove(possibleMoves)
@@ -106,22 +106,46 @@ def createSimplePath(connections):
 
 
 if __name__ == '__main__':
+    saveGraphs = True
+    iterationLimit = 1000
+    killSwitch = 10
+    optimalSolution = 70
+
     points = loadPointsFromFile(FILE_BASE_PATH  + 'points.csv')
     connections = loadConnectionsFromFile(points, FILE_BASE_PATH + 'connections.csv')
     pathStore = []
 
     basePath = createSimplePath(connections)
     pathStore.append(copy.deepcopy(basePath))
+    plotConnections(basePath.connections, save = saveGraphs, show = False)
 
-    print("Selected path with cost " + str(basePath.cost) + " steps taken " + str(len(basePath.connections)))
-    plotConnections(basePath.connections, save = True)
+    upgradedPath = basePath
+    lastCost = upgradedPath.cost
+    killSwitchCounter = 0
+    i = 0
+    finalMessage = ""
+    while True:
+        resetedPath, resetIndex = resetPositionToLastTopCostMove(upgradedPath, connections)
+        upgradedPath = continuePath(resetedPath, connections, resetIndex)
+        pathStore.append(copy.deepcopy(upgradedPath))
+        plotConnections(upgradedPath.connections, save = saveGraphs, show = False)
 
-    resetedPath, resetIndex = resetPositionToLastTopCostMove(basePath, connections)
-    upgradedPath = continuePath(resetedPath, connections, resetIndex)
-    pathStore.append(copy.deepcopy(upgradedPath))
+        if lastCost == upgradedPath.cost:
+            killSwitchCounter += 1
+        else:
+            killSwitchCounter = 0
 
-    print("Selected path with cost " + str(upgradedPath.cost) + " steps taken " + str(len(upgradedPath.connections)))
-    plotConnections(upgradedPath.connections, save = True)
+        lastCost = upgradedPath.cost
+        i += 1
+        if upgradedPath.cost == optimalSolution:
+            finalMessage = "Optimal solution found"
+            break
+        if i >= iterationLimit:
+            finalMessage = "Iteration limit reached"
+            break
+        if killSwitchCounter >= killSwitch:
+            finalMessage = "Kill switch initiated"
+            break
 
 
     print("Summary:")
@@ -129,5 +153,4 @@ if __name__ == '__main__':
         print("Selected path with cost " + str(p.cost) + " steps taken " + str(len(p.connections)))
         printMoves(p.connections)
 
-    # comparePlot(pathStore[0].connections, pathStore[1].connections)
-    # print("END")
+    print(finalMessage)
