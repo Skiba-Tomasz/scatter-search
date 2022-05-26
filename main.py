@@ -2,7 +2,7 @@ import copy
 import csv
 from importlib.resources import path
 from textwrap import indent
-from plot import plotConnections, comparePlot
+from plot import plotConnections, setFolderName
 from SPoint import SPoint
 from SConn import SConn
 from SPath import SPath
@@ -28,9 +28,10 @@ def loadConnectionsFromFile(points, fileName):
     return connections
 
 def printMoves(moves):
-    print("Current moves:")
+    # print("Current moves:")
     for move in moves:
         print(move)
+    print("")
 
 def getPossibleMoves(connections: SConn, currentPosition: SPoint) -> SConn:
     return [c for c in connections if c.origin == currentPosition and c.used == False and c.destination.visited == False]
@@ -48,65 +49,68 @@ def pickWeightedRandomMove(possibleMoves: SConn):
 def selectMove(possibleMoves: SConn):
     return pickWeightedRandomMove(possibleMoves)
 
-def resetPositionToLastTopCostMove(path: SPath, connections: SConn):
-    lastestTopCostConnection = path.connections[0]
+def resetPositionToLastTopCostMove(path: SPath):
+    lastestTopCostConnection = path.path[0]
     lastestTopCostConnectionIndex = 0
-    for index, connection in list(enumerate(path.connections)):
+    for index, connection in list(enumerate(path.path)):
         if connection.cost > lastestTopCostConnection.cost:
             lastestTopCostConnection = connection
             lastestTopCostConnectionIndex = index
-    movesToReset = path.connections[lastestTopCostConnectionIndex:]
+    movesToReset = path.path[lastestTopCostConnectionIndex:]
     for move in movesToReset:
-        for con in connections:
+        for con in path.possibleConnections:
             if con.origin == move.origin and con.destination == move.destination:
                 con.used = False
+                con.destination.visited = False
         move.destination.visited = False
         move.used = False
         path.cost -= move.cost
-    path.connections = path.connections[:lastestTopCostConnectionIndex]
-    return path, lastestTopCostConnectionIndex
+    path.path = path.path[:lastestTopCostConnectionIndex]
+    return path
     
-def continuePath(path, connections, index):
-    if len(path.connections) == 0:
-        return createSimplePath(connections)
-    currentPosition = path.connections[index - 1].destination
-    currentPosition.visited = True
+def continuePath(path: SPath, allConnections: SConn):
+    if len(path.path) == 0:
+        return createSimplePath(allConnections)
+    currentPosition = path.path[len(path.path) - 1].destination #TODO move position to path object
+    # currentPosition.visited = True
     while True:
-        possibleMoves = getPossibleMoves(connections, currentPosition)
+        test = [c for c in path.possibleConnections if c.origin == currentPosition and c.used == False]
+        possibleMoves = getPossibleMoves(path.possibleConnections, currentPosition)
         # printMoves(possibleMoves)
         if len(possibleMoves) == 0:
             break
         selectedConnection = selectMove(possibleMoves)
-        currentPosition = makeMove(currentPosition, selectedConnection, path.connections)
+        currentPosition = makeMove(selectedConnection, path.path)
         path.cost += selectedConnection.cost
-    return SPath(path.connections, path.cost)
+    return SPath(path.path, path.cost, allConnections)
         
-def makeMove(currentPosition, connection, path):
+def makeMove(connection, path):
     path.append(connection)
     connection.used = True
     connection.destination.visited = True
     return connection.destination
 
-def createSimplePath(connections):
+def createSimplePath(allConnections):
     # INITIALIZE
+    path = SPath([], 0, allConnections)
     pathConnections = []
-    totalCost = 0
-    currentPosition = connections[0].origin
+    currentPosition = path.possibleConnections[0].origin
     currentPosition.visited = True
     # STARTING PATH
     while True:
-        possibleMoves = getPossibleMoves(connections, currentPosition)
+        possibleMoves = getPossibleMoves(path.possibleConnections, currentPosition)
         # printMoves(possibleMoves)
         if len(possibleMoves) == 0:
             break
         selectedConnection = selectMove(possibleMoves)
-        currentPosition = makeMove(currentPosition, selectedConnection, pathConnections)
-        totalCost += selectedConnection.cost
-    return SPath(pathConnections, totalCost)
+        currentPosition = makeMove(selectedConnection, pathConnections)
+        path.cost += selectedConnection.cost
+    path.setPathConnections(pathConnections)
+    return path
 
-
-if __name__ == '__main__':
+def start(i):
     #Initialize
+    folder = "C:/Users/Tomasz/Documents/Projects/Studia/Heurystyki/scatter-search/plots/" + str(i) + "/"
     saveGraphs = True
     iterationLimit = 10000
     optimalSolution = 70
@@ -118,21 +122,41 @@ if __name__ == '__main__':
 
     #Get a solution
     bestSolutions = []
+    blockedSolutions = []
     firstPath = createSimplePath(connections)
     bestSolutions.append(copy.deepcopy(firstPath))
-    plotConnections(firstPath.connections, save = saveGraphs, show = False)
-    lastCost = firstPath.cost
-    nextPath = firstPath
+    # plotConnections(firstPath.path, save = saveGraphs, show = False)
+    nextPath = copy.deepcopy(firstPath)
+
+    stuckMax = 10
+    stuckCounter = 0
 
     #Get improvement solutions
     i = 0
     while True:
-        resetedPath, resetIndex = resetPositionToLastTopCostMove(nextPath, connections)
-        nextPath = continuePath(resetedPath, connections, resetIndex)
-        if nextPath.cost < lastCost:
+        resetPositionToLastTopCostMove(nextPath)
+        nextPath = continuePath(nextPath, nextPath.possibleConnections)
+        printMoves(nextPath.path)
+        if nextPath.cost < bestSolutions[len(bestSolutions) - 1].cost:
             bestSolutions.append(copy.deepcopy(nextPath))
-            plotConnections(nextPath.connections, save = saveGraphs, show = False)
-            lastCost = nextPath.cost
+            # plotConnections(nextPath.path, save = saveGraphs, show = False)
+        else:
+            stuckCounter += 1
+            if stuckCounter >= stuckMax:
+                lastBlocked = copy.deepcopy(bestSolutions[len(bestSolutions) - 1])
+                if len(lastBlocked.path) == 0:
+                    print('dupa')
+                blockedSolutions.append(copy.deepcopy(bestSolutions[len(bestSolutions) - 1]))
+                bestSolutions = bestSolutions[:len(bestSolutions) - 1]
+                if len(bestSolutions) >= 1:
+                    nextPath = copy.deepcopy(bestSolutions[len(bestSolutions) - 1])
+                else:
+                    firstPath = createSimplePath(connections)
+                    bestSolutions.append(copy.deepcopy(firstPath))
+                    # plotConnections(firstPath.path, save = saveGraphs, show = False)
+                    nextPath = copy.deepcopy(firstPath)
+                stuckCounter = 0
+
         i += 1
         if nextPath.cost == optimalSolution:
             finalMessage = "Optimal solution found"
@@ -142,7 +166,19 @@ if __name__ == '__main__':
             break
     print("Summary:")
     for p in bestSolutions:
-        print("Selected path with cost " + str(p.cost) + " steps taken " + str(len(p.connections)))
-        printMoves(p.connections)
+        print("Selected path with cost " + str(p.cost) + " steps taken " + str(len(p.path)) + ":")
+        printMoves(p.path)
+        plotConnections(p.path, save = saveGraphs, show = False, folder=folder)
+    print("Blocked solutions:")
+    for p in blockedSolutions:
+        print("Selected path with cost " + str(p.cost) + " steps taken " + str(len(p.path)) + ":")
+        printMoves(p.path)
+        plotConnections(p.path, save = saveGraphs, show = False, color="r", folder=folder)
 
     print(finalMessage)
+
+
+if __name__ == '__main__':
+    
+    for i in range(0,10):
+        start(i)

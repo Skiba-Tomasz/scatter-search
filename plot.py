@@ -1,19 +1,26 @@
+import string
 import time
 import os
 import matplotlib.pyplot as plt
 from SPoint import SPoint
 from SConn import SConn
 
-FILE_BASE_PATH = "C:/Users/Tomasz/Documents/Projects/Studia/Heurystyki/scatter-search/plots/" + str(int(time.time()*100)) + "/"
+FOLDER_NAME = str(int(time.time()*100))
+FILE_BASE_PATH = "C:/Users/Tomasz/Documents/Projects/Studia/Heurystyki/scatter-search/plots/" + FOLDER_NAME + "/"
 
-def plotConnections(connections: SConn, show = True, color = "g", stroke = 1, save = False):
+def setFolderName(folderName: string):
+    FOLDER_NAME = folderName
+    FILE_BASE_PATH = "C:/Users/Tomasz/Documents/Projects/Studia/Heurystyki/scatter-search/plots/" + FOLDER_NAME + "/"
+
+def plotConnections(connections: SConn, show = True, color = "g", stroke = 1, save = False, folder=FILE_BASE_PATH):
     subsequentOrigins = []
     for m in connections:
         subsequentOrigins.append(m.origin)
-    subsequentOrigins.append(connections[len(connections) - 1].destination)
-    plotPath(subsequentOrigins, show, color, stroke, save)
+    if len(connections) >= 1:
+        subsequentOrigins.append(connections[len(connections) - 1].destination)
+    plotPath(subsequentOrigins, show, color, stroke, save, folder)
 
-def plotPath(points: SPoint, show = True, color = "g", stroke = 1, save = False):
+def plotPath(points: SPoint, show = True, color = "g", stroke = 1, save = False, folder=FILE_BASE_PATH):
     x = [float(i.x) for i in points]
     y = [float(i.y) for i in points]
 
@@ -33,8 +40,8 @@ def plotPath(points: SPoint, show = True, color = "g", stroke = 1, save = False)
     plt.xlim(min(x) - xMargin, max(x) + xMargin)
     plt.ylim(min(y) - yMargin, max(y) + yMargin)
     if save == True:
-        createFolderIfNotExists()
-        plt.savefig(FILE_BASE_PATH + str(int(time.time()*1000))+".png")
+        createFolderIfNotExists(folder)
+        plt.savefig(folder + str(int(time.time()*1000))+".png")
         if show == False:
             plt.clf()
     if show == True:
@@ -45,7 +52,7 @@ def comparePlot(points1, points2):
     plotConnections(points2, False, "g", 3)
     plt.show()
 
-def createFolderIfNotExists():
-    if not os.path.exists(FILE_BASE_PATH):
-        os.makedirs(FILE_BASE_PATH)
-        print("Grapths at: " + FILE_BASE_PATH)
+def createFolderIfNotExists(folder: string):
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+        print("Grapths at: " + folder)

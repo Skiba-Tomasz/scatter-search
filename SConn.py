@@ -9,3 +9,8 @@ class SConn:
 
     def __str__(self):
         return "[from = " + str(self.origin) + ", to = " + str(self.destination) + ", cost = " + str(self.cost) + ", used = " + str(self.used) + "]"
+
+    def __eq__(self, other):
+        if isinstance(other, SConn):
+            return self.origin == other.origin and self.destination == other.destination
+        return False
