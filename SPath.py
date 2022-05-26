@@ -1,9 +1,10 @@
 from SConn import SConn
 class SPath:
 
-    def __init__(self, connections: SConn, cost: float):
+    def __init__(self, connections: SConn, cost: float, resetDepth = 0):
         self.connections = connections
         self.cost = float(cost)
+        self.resetDepth = resetDepth
 
     #TODO
     # def __str__(self):

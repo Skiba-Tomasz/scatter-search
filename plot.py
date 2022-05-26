@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 from SPoint import SPoint
 from SConn import SConn
 
+FILE_BASE_PATH = "C:/Users/Tomasz/Documents/Projects/Studia/Heurystyki/scatter-search/"
+
 
 def plotConnections(connections: SConn, show = True, color = "g", stroke = 1, save = False):
     subsequentOrigins = []
@@ -31,7 +33,7 @@ def plotPath(points: SPoint, show = True, color = "g", stroke = 1, save = False)
     plt.xlim(min(x) - xMargin, max(x) + xMargin)
     plt.ylim(min(y) - yMargin, max(y) + yMargin)
     if save == True:
-        plt.savefig("plots/"+str(int(time.time()*1000))+".png")
+        plt.savefig(FILE_BASE_PATH + "plots/"+str(int(time.time()*1000))+".png")
         if show == False:
             plt.clf()
     if show == True:
