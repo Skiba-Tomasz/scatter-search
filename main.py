@@ -48,17 +48,13 @@ def pickWeightedRandomMove(possibleMoves: SConn):
 def selectMove(possibleMoves: SConn):
     return pickWeightedRandomMove(possibleMoves)
 
-def resetPositionToLastTopCostMove(path: SPath, connections: SConn, depth: int):
+def resetPositionToLastTopCostMove(path: SPath, connections: SConn):
     lastestTopCostConnection = path.connections[0]
     lastestTopCostConnectionIndex = 0
     for index, connection in list(enumerate(path.connections)):
         if connection.cost > lastestTopCostConnection.cost:
             lastestTopCostConnection = connection
             lastestTopCostConnectionIndex = index
-    if lastestTopCostConnectionIndex > depth:
-        lastestTopCostConnectionIndex -= depth
-    else:
-        lastestTopCostConnectionIndex = 0
     movesToReset = path.connections[lastestTopCostConnectionIndex:]
     for move in movesToReset:
         for con in connections:
@@ -110,58 +106,43 @@ def createSimplePath(connections):
 
 
 if __name__ == '__main__':
+    #Initialize
     saveGraphs = True
-    iterationLimit = 1000
-    killSwitch = 30
+    iterationLimit = 10000
     optimalSolution = 70
-
     points = loadPointsFromFile(FILE_BASE_PATH  + 'points.csv')
     connections = loadConnectionsFromFile(points, FILE_BASE_PATH + 'connections.csv')
-    pathStore = []
-
-    basePath = createSimplePath(connections)
-    pathStore.append(copy.deepcopy(basePath))
-    plotConnections(basePath.connections, save = saveGraphs, show = False)
-
-    upgradedPath = basePath
-    lastCost = upgradedPath.cost
-    killSwitchCounter = 0
-    depth = 0
-    i = 0
     finalMessage = ""
+
+    #Start algorithm
+
+    #Get a solution
+    bestSolutions = []
+    firstPath = createSimplePath(connections)
+    bestSolutions.append(copy.deepcopy(firstPath))
+    plotConnections(firstPath.connections, save = saveGraphs, show = False)
+    lastCost = firstPath.cost
+    nextPath = firstPath
+
+    #Get improvement solutions
+    i = 0
     while True:
-        resetedPath, resetIndex = resetPositionToLastTopCostMove(upgradedPath, connections, depth)
-        upgradedPath = continuePath(resetedPath, connections, resetIndex)
-        upgradedPath.resetDepth = depth
-        pathStore.append(copy.deepcopy(upgradedPath))
-        plotConnections(upgradedPath.connections, save = saveGraphs, show = False)
-
-        if lastCost == upgradedPath.cost:
-            killSwitchCounter += 1
-        else:
-            killSwitchCounter = 0
-            depth = 0
-
-        if killSwitchCounter != 0 and killSwitchCounter % 3 == 0:
-            depth += 1
-            print("Increasing depth to " + str(depth))
-
-        lastCost = upgradedPath.cost
+        resetedPath, resetIndex = resetPositionToLastTopCostMove(nextPath, connections)
+        nextPath = continuePath(resetedPath, connections, resetIndex)
+        if nextPath.cost < lastCost:
+            bestSolutions.append(copy.deepcopy(nextPath))
+            plotConnections(nextPath.connections, save = saveGraphs, show = False)
+            lastCost = nextPath.cost
         i += 1
-        if upgradedPath.cost == optimalSolution:
+        if nextPath.cost == optimalSolution:
             finalMessage = "Optimal solution found"
             break
         if i >= iterationLimit:
             finalMessage = "Iteration limit reached"
             break
-        if killSwitchCounter >= killSwitch:
-            finalMessage = "Kill switch initiated"
-            break
-
-
     print("Summary:")
-    for p in pathStore:
-        print("Selected path with cost " + str(p.cost) + " steps taken " + str(len(p.connections)) + " depth " + str(p.resetDepth))
+    for p in bestSolutions:
+        print("Selected path with cost " + str(p.cost) + " steps taken " + str(len(p.connections)))
         printMoves(p.connections)
 
     print(finalMessage)

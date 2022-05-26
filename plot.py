@@ -1,10 +1,10 @@
 import time
+import os
 import matplotlib.pyplot as plt
 from SPoint import SPoint
 from SConn import SConn
 
-FILE_BASE_PATH = "C:/Users/Tomasz/Documents/Projects/Studia/Heurystyki/scatter-search/"
-
+FILE_BASE_PATH = "C:/Users/Tomasz/Documents/Projects/Studia/Heurystyki/scatter-search/plots/" + str(int(time.time()*100)) + "/"
 
 def plotConnections(connections: SConn, show = True, color = "g", stroke = 1, save = False):
     subsequentOrigins = []
@@ -33,7 +33,8 @@ def plotPath(points: SPoint, show = True, color = "g", stroke = 1, save = False)
     plt.xlim(min(x) - xMargin, max(x) + xMargin)
     plt.ylim(min(y) - yMargin, max(y) + yMargin)
     if save == True:
-        plt.savefig(FILE_BASE_PATH + "plots/"+str(int(time.time()*1000))+".png")
+        createFolderIfNotExists()
+        plt.savefig(FILE_BASE_PATH + str(int(time.time()*1000))+".png")
         if show == False:
             plt.clf()
     if show == True:
@@ -43,3 +44,8 @@ def comparePlot(points1, points2):
     plotConnections(points1, False, "r", 1)
     plotConnections(points2, False, "g", 3)
     plt.show()
+
+def createFolderIfNotExists():
+    if not os.path.exists(FILE_BASE_PATH):
+        os.makedirs(FILE_BASE_PATH)
+        print("Grapths at: " + FILE_BASE_PATH)
